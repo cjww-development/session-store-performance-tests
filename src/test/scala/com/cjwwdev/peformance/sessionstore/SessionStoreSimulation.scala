@@ -20,6 +20,7 @@ import java.util.UUID
 
 import com.cjwwdev.peformance.helpers.ConnectionSettings
 import io.gatling.core.Predef._
+import io.gatling.core.feeder.{Feeder, FeederSupport, SourceFeederBuilder}
 import io.gatling.core.session.Expression
 import io.gatling.core.structure.ScenarioBuilder
 import io.gatling.http.Predef._
@@ -28,7 +29,7 @@ import io.gatling.http.request.builder.HttpRequestBuilder
 
 import scala.concurrent.duration._
 
-class SessionStoreSimulation extends Simulation with ConnectionSettings {
+class SessionStoreSimulation extends Simulation with ConnectionSettings with FeederSupport {
 
   def uuid: String = UUID.randomUUID().toString
 
@@ -58,28 +59,32 @@ class SessionStoreSimulation extends Simulation with ConnectionSettings {
       .check(status is 200)
   }
 
-  def getSession(id: String, key: Option[String] = None): HttpRequestBuilder = {
-    http(key.map(x => s"get-entry-from-session-$x").getOrElse("get-session"))
-      .get(key.map(x => s"/session/session-$id/data?key=$x").getOrElse(s"/session/session-$id/data"))
+  def getSession(url: Expression[String]): HttpRequestBuilder = {
+    http("get-session")
+      .get(url)
       .check(status is 200)
   }
 
-  def deleteSession(id: String): HttpRequestBuilder = {
+  def deleteSession(url: Expression[String]): HttpRequestBuilder = {
     http("delete-session")
-      .delete(s"/session/session-$id")
+      .delete(url)
       .check(status is 204)
   }
 
-  def sessionStoreTests(id: Expression[String]): ScenarioBuilder = {
+  def sessionStoreTests(id: String): ScenarioBuilder = {
     scenario("Session store performance run")
       .exec(createSession(_ => s"/session/session-$id"))
       .exec(updateSession(_ => s"/session/session-$id"))
-//      .exec(getSession(id, Some("basicValue")))
-//      .exec(getSession(id, Some("encValue")))
-//      .exec(getSession(id))
-//      .exec(deleteSession(id))
+      .exec(getSession(_ => s"/session/session-$id/data?key=basicValue"))
+      .exec(getSession(_ => s"/session/session-$id/data?key=encValue"))
+      .exec(getSession(_ => s"/session/session-$id/data"))
+      .exec(deleteSession(_ => s"/session/session-$id"))
   }
 
-  setUp(sessionStoreTests(_ => uuid).inject(constantUsersPerSec(jps) during(duration minute)))
-    .protocols(httpProtocol)
+  setUp(sessionStoreTests(uuid)
+    .inject(
+      rampUsersPerSec(ramp) to jps during(duration minute),
+      constantUsersPerSec(jps) during(duration minute)
+    )
+  ).protocols(httpProtocol)
 }

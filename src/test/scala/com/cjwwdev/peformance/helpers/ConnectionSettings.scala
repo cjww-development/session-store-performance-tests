@@ -27,6 +27,7 @@ trait ConnectionSettings {
 
   val applicationUrl: String = config.getString(s"baseUrls.$env")
 
+  val ramp: Int     = config.getInt("runConfig.ramp")
   val jps: Int      = config.getInt("runConfig.jps")
   val duration: Int = config.getInt("runConfig.duration")
 }
