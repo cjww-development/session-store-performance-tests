@@ -39,6 +39,7 @@ class SessionStoreSimulation extends Simulation with ConnectionSettings with Fee
     .header("Content-Type", "text/plain")
     .header("cjww-headers", "mKAPsVVBf4-hJzJiuBe5234wS-xI5onArz3lzIrEHBlNhTH1CHqQhyYZFgYasZHmi0kGL6DsAbaU0BRL81FLLA")
 
+
   def createSession(url: Expression[String]): HttpRequestBuilder = {
     http("create-session")
       .post(url)
@@ -71,14 +72,23 @@ class SessionStoreSimulation extends Simulation with ConnectionSettings with Fee
       .check(status is 204)
   }
 
+  object UUIDFeeder {
+    private def uuid = UUID.randomUUID().toString
+
+    def apply(): Feeder[String] = {
+      Iterator.continually(Map(("uuid", uuid)))
+    }
+  }
+
+  val feed = UUIDFeeder()
+
   def sessionStoreTests(id: String): ScenarioBuilder = {
     scenario("Session store performance run")
-      .exec(createSession(_ => s"/session/session-$id"))
-      .exec(updateSession(_ => s"/session/session-$id"))
-      .exec(getSession(_ => s"/session/session-$id/data?key=basicValue"))
-      .exec(getSession(_ => s"/session/session-$id/data?key=encValue"))
-      .exec(getSession(_ => s"/session/session-$id/data"))
-      .exec(deleteSession(_ => s"/session/session-$id"))
+      .feed(feed)
+      .exec(createSession("/session/session-${uuid}"))
+      .exec(updateSession("/session/session-${uuid}"))
+      .exec(getSession("/session/session-${uuid}/data"))
+      .exec(deleteSession("/session/session-${uuid}"))
   }
 
   setUp(sessionStoreTests(uuid)
