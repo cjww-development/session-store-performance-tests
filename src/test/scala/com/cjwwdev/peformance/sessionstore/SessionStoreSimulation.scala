@@ -75,9 +75,7 @@ class SessionStoreSimulation extends Simulation with ConnectionSettings with Fee
   object UUIDFeeder {
     private def uuid = UUID.randomUUID().toString
 
-    def apply(): Feeder[String] = {
-      Iterator.continually(Map(("uuid", uuid)))
-    }
+    def apply(): Feeder[String] = Iterator.continually(Map("uuid" -> uuid))
   }
 
   val feed = UUIDFeeder()
